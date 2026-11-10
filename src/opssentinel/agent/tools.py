@@ -11,6 +11,7 @@ import httpx
 from opssentinel.config import settings
 from opssentinel.db import get_db_connection, record_incident_audit, search_runbooks
 from opssentinel.ingestion.ingest import compute_embedding, get_gemini_client
+from opssentinel.metrics import record_dispatch_metric, record_tool_metric
 
 logger = logging.getLogger("opssentinel.tools")
 
@@ -31,6 +32,7 @@ def search_runbooks_tool(
         JSON string containing matching runbooks, similarity scores, and remediation excerpts.
     """
     logger.info("Tool 1 invoked: search_runbooks_tool with query='%s', category='%s'", query, category)
+    record_tool_metric("search_runbooks_tool")
     try:
         client = get_gemini_client()
         query_embedding = compute_embedding(client, query)
@@ -86,6 +88,7 @@ def query_system_diagnostics_tool(
         service_name,
         check_type,
     )
+    record_tool_metric("query_system_diagnostics_tool")
     svc = (service_name or "infrastructure").lower()
     timestamp = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
 
@@ -193,6 +196,7 @@ def dispatch_n8n_alert_tool(
         JSON string confirming n8n dispatch and audit log persistence.
     """
     logger.info("Tool 3 invoked: dispatch_n8n_alert_tool for '%s' [%s]", title, severity)
+    record_tool_metric("dispatch_n8n_alert_tool")
     inc_id = incident_id or f"INC-{int(time.time()):X}"
     payload = {
         "incident_id": inc_id,
@@ -229,6 +233,8 @@ def dispatch_n8n_alert_tool(
     except Exception as e:
         logger.warning("n8n webhook dispatch failed: %s", e)
         n8n_response_data = {"error": f"Connection error: {str(e)}"}
+
+    record_dispatch_metric("success" if n8n_success else "failure")
 
     # Audit to PostgreSQL database
     try:

@@ -257,6 +257,7 @@ OpsSentinel/
 │       ├── __init__.py
 │       ├── config.py                # Pydantic environment configuration
 │       ├── db.py                    # Connection pool & pgvector queries
+│       ├── metrics.py               # Prometheus metrics collection and exposition format
 │       ├── agent/
 │       │   ├── __init__.py
 │       │   ├── agent.py             # Autonomous Gemini agentic loop

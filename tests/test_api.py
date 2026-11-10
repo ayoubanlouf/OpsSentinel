@@ -79,3 +79,12 @@ def test_analyze_incident_streaming_endpoint(mock_analyze, test_client):
     assert "event: start" in text
     assert "event: step" in text
     assert "event: complete" in text
+
+
+def test_metrics_endpoint(test_client):
+    """Verify Prometheus metrics exposition endpoint."""
+    response = test_client.get("/metrics")
+    assert response.status_code == 200
+    assert "text/plain" in response.headers["content-type"]
+    text = response.text
+    assert "opssentinel_uptime_seconds" in text

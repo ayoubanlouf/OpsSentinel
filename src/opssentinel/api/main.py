@@ -11,7 +11,7 @@ from typing import Any
 
 from fastapi import FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, PlainTextResponse, StreamingResponse
 from psycopg.rows import dict_row
 from pydantic import BaseModel, Field
 
@@ -19,6 +19,7 @@ from opssentinel.agent.agent import IncidentAgent, IncidentAnalysisResult
 from opssentinel.config import settings
 from opssentinel.db import close_db_pool, get_db_connection, get_db_pool
 from opssentinel.ingestion.ingest import ingest_all_runbooks
+from opssentinel.metrics import format_prometheus_metrics, record_incident_metric
 
 logging.basicConfig(level=getattr(logging, settings.log_level.upper(), logging.INFO))
 logger = logging.getLogger("opssentinel.api")
@@ -133,6 +134,7 @@ def analyze_incident(request: IncidentAnalyzeRequest):
     try:
         agent = IncidentAgent()
         result = agent.analyze_incident(query=request.query, incident_id=request.incident_id)
+        record_incident_metric(result.severity, result.status, result.execution_time_seconds)
         return result
     except Exception as e:
         logger.error("Incident analysis failed: %s", e, exc_info=True)
@@ -153,9 +155,16 @@ async def _stream_incident_analysis(
         result = agent.analyze_incident(query=query, incident_id=incident_id)
         for step in result.steps:
             yield f"event: step\ndata: {step.model_dump_json()}\n\n"
+        record_incident_metric(result.severity, result.status, result.execution_time_seconds)
         yield f"event: complete\ndata: {result.model_dump_json()}\n\n"
     except Exception as e:
         yield f"event: error\ndata: {json.dumps({'error': str(e)})}\n\n"
+
+
+@app.get("/metrics", response_class=PlainTextResponse, tags=["Monitoring"])
+def get_metrics() -> PlainTextResponse:
+    """Prometheus exposition format metrics endpoint for scraping."""
+    return PlainTextResponse(content=format_prometheus_metrics())
 
 
 @app.get("/api/v1/incidents", tags=["Incidents"], summary="List historical incident audit logs")
