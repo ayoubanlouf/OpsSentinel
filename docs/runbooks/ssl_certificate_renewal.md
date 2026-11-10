@@ -112,3 +112,4 @@ kubectl rollout restart deployment/ingress-nginx-controller -n ingress-nginx
 - **L1 / On-Call SRE**: Triage immediately upon `SSLCertExpiringSoon` (< 7 days) alert.
 - **L2 / Security Engineering**: Escalate if ACME CA account is suspended or blocked.
 - **Incident Commander**: Immediate P1 incident if client requests are actively failing.
+

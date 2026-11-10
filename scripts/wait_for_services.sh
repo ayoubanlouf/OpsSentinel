@@ -29,3 +29,4 @@ echo "All OpsSentinel backing services are online!"
 echo "Access n8n at: http://localhost:5678"
 echo "PostgreSQL available at: postgresql://postgres:postgres@localhost:5432/opssentinel"
 echo "========================================================"
+

@@ -58,3 +58,4 @@ Thumbs.db
 postgres_data/
 n8n_data/
 *.log
+

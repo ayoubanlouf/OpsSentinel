@@ -67,3 +67,4 @@ networks:
   opssentinel-network:
     name: opssentinel_network
     driver: bridge
+

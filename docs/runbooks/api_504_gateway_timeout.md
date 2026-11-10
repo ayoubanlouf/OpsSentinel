@@ -93,3 +93,4 @@ kubectl scale deployment/backend-api -n production --replicas=12
 - **L1 / On-Call SRE**: Acknowledge alert within 3 minutes; identify offending route and restart degraded pods.
 - **L2 / Backend Team Lead**: Escalate within 15 minutes if timeouts stem from database deadlocks or logic regressions.
 - **Incident Commander**: Escalate to Sev-1 if > 10% of revenue-critical endpoints return 504.
+

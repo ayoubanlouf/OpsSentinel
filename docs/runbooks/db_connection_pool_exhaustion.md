@@ -108,3 +108,4 @@ kill -HUP $(pgrep pgbouncer)
 - **L1 / On-Call SRE**: Execute steps 3.1 through 4.2 within 5 minutes of page.
 - **L2 / Database Admin (DBA)**: Escalate if terminating idle sessions does not clear slot saturation within 10 minutes.
 - **Incident Commander**: Declare major incident if user-facing API failure rate exceeds 5% for > 5 minutes.
+

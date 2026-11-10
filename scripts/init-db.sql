@@ -48,3 +48,4 @@ CREATE TABLE IF NOT EXISTS incidents (
 CREATE INDEX IF NOT EXISTS incidents_incident_id_idx ON incidents (incident_id);
 CREATE INDEX IF NOT EXISTS incidents_status_idx ON incidents (status);
 CREATE INDEX IF NOT EXISTS incidents_created_at_idx ON incidents (created_at DESC);
+
