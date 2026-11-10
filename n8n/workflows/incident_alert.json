@@ -1,0 +1,87 @@
+{
+  "name": "OpsSentinel Incident Alert Dispatcher",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "incident-alert",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        220,
+        300
+      ],
+      "id": "1c7a40b9-8c70-4f81-a9bc-778844aa1111",
+      "name": "Incident Webhook Ingest",
+      "webhookId": "opssentinel-incident-alert"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract incident payload from incoming webhook body\nconst payload = $input.first().json.body || $input.first().json;\n\nconst incidentId = payload.incident_id || `INC-${Date.now().toString(36).toUpperCase()}`;\nconst severity = (payload.severity || 'P2').toUpperCase();\nconst title = payload.title || 'Infrastructure Incident Alert';\nconst summary = payload.summary || payload.query || 'Unspecified incident query';\nconst matchedRunbooks = payload.matched_runbooks || [];\nconst diagnostics = payload.diagnostics || {};\nconst remediationPlan = payload.remediation_plan || payload.remediation || 'Follow standard operating procedure.';\nconst timestamp = new Date().toISOString();\n\n// Color mapping based on SRE severity level\nconst severityColors = {\n  'P1': '#E02424', // Red (Critical)\n  'P2': '#FF5A1F', // Orange (High)\n  'P3': '#E3A008', // Amber (Medium)\n  'P4': '#3F83F8'  // Blue (Low)\n};\nconst color = severityColors[severity] || '#76A9FA';\n\n// Build Markdown formatted alert\nconst formattedMarkdown = [\n  `🚨 **[${severity}] ${title}**`,\n  `**Incident ID**: \\`${incidentId}\\` | **Time**: ${timestamp}`,\n  `**Summary**: ${summary}`,\n  '',\n  `📊 **Diagnostic Telemetry**:`,\n  '```json',\n  JSON.stringify(diagnostics, null, 2),\n  '```',\n  '',\n  `📖 **Matched Runbooks**: ${matchedRunbooks.map(r => typeof r === 'string' ? r : r.title || r.filename).join(', ') || 'None'}`,\n  '',\n  `🛠️ **Actionable Remediation Plan**:`,\n  remediationPlan\n].join('\\n');\n\n// Slack / Discord compatible webhook payload block\nconst notificationPayload = {\n  incident_id: incidentId,\n  severity,\n  title,\n  timestamp,\n  formatted_markdown: formattedMarkdown,\n  slack_payload: {\n    text: `🚨 [${severity}] ${title}`,\n    attachments: [{\n      color: color,\n      title: `[${severity}] ${title}`,\n      text: formattedMarkdown,\n      ts: Math.floor(Date.now() / 1000)\n    }]\n  },\n  discord_payload: {\n    embeds: [{\n      title: `🚨 [${severity}] ${title}`,\n      description: formattedMarkdown,\n      color: parseInt(color.replace('#', ''), 16),\n      timestamp: timestamp\n    }]\n  }\n};\n\nreturn [{\n  json: {\n    status: 'received',\n    success: true,\n    dispatched_at: timestamp,\n    incident_id: incidentId,\n    severity: severity,\n    title: title,\n    notification: notificationPayload\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        300
+      ],
+      "id": "2b8b51c0-9d81-4e92-b0cd-889955bb2222",
+      "name": "Format Incident Notification"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        740,
+        300
+      ],
+      "id": "3a9c62d1-0e92-4f03-c1de-990066cc3333",
+      "name": "Respond to Caller"
+    }
+  ],
+  "connections": {
+    "Incident Webhook Ingest": {
+      "main": [
+        [
+          {
+            "node": "Format Incident Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Incident Notification": {
+      "main": [
+        [
+          {
+            "node": "Respond to Caller",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "OpsSentinel"
+    },
+    {
+      "name": "SRE Incident Response"
+    }
+  ]
+}
