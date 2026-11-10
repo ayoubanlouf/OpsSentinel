@@ -232,13 +232,14 @@ OpsSentinel/
 ├── .github/
 │   └── workflows/
 │       └── ci.yml                   # GitHub Actions CI workflow
+├── Dockerfile                       # Multi-stage production container image
 ├── docker-compose.yml               # PostgreSQL (pgvector) & n8n orchestration
 ├── pyproject.toml                   # Project metadata and dependencies
 ├── requirements.txt                 # Production dependencies
 ├── requirements-dev.txt             # Development and testing dependencies
 ├── README.md                        # Enterprise platform documentation
-├── SETUP_CHECKPOINT.md              # Checkpoint setup guide
 ├── docs/
+│   ├── ARCHITECTURE.md              # In-depth architectural & operational guide
 │   └── runbooks/                    # Operational SRE runbooks
 │       ├── api_504_gateway_timeout.md
 │       ├── db_connection_pool_exhaustion.md
@@ -250,7 +251,7 @@ OpsSentinel/
 ├── scripts/
 │   ├── init-db.sql                  # PostgreSQL & pgvector schema init
 │   ├── wait_for_services.sh         # Container healthcheck utility
-│   └── test_agent_live.py           # Integration test script
+│   └── run_incident_demo.py         # Multi-scenario CLI demonstration runner
 ├── src/
 │   └── opssentinel/
 │       ├── __init__.py
@@ -265,7 +266,9 @@ OpsSentinel/
 │       │   └── ingest.py            # Runbook parsing, semantic chunking & vector indexing
 │       └── api/
 │           ├── __init__.py
-│           └── main.py              # FastAPI service & streaming endpoints
+│           ├── main.py              # FastAPI service & streaming endpoints
+│           └── templates/
+│               └── dashboard.html   # Glassmorphic SRE web dashboard
 └── tests/
     ├── __init__.py
     ├── conftest.py                  # Pytest fixtures and mocks
