@@ -4,13 +4,14 @@ Exposes REST and streaming endpoints for incident analysis, health monitoring, a
 
 import json
 import logging
+import os
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import HTMLResponse, StreamingResponse
 from psycopg.rows import dict_row
 from pydantic import BaseModel, Field
 
@@ -21,6 +22,8 @@ from opssentinel.ingestion.ingest import ingest_all_runbooks
 
 logging.basicConfig(level=getattr(logging, settings.log_level.upper(), logging.INFO))
 logger = logging.getLogger("opssentinel.api")
+
+TEMPLATE_DIR = os.path.join(os.path.dirname(__file__), "templates")
 
 
 @asynccontextmanager
@@ -52,6 +55,17 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.get("/", response_class=HTMLResponse, tags=["Dashboard"], include_in_schema=False)
+@app.get("/dashboard", response_class=HTMLResponse, tags=["Dashboard"])
+def get_dashboard() -> HTMLResponse:
+    """Serve the interactive OpsSentinel SRE Incident Response Dashboard."""
+    template_path = os.path.join(TEMPLATE_DIR, "dashboard.html")
+    if os.path.exists(template_path):
+        with open(template_path, encoding="utf-8") as f:
+            return HTMLResponse(content=f.read())
+    return HTMLResponse("<h1>OpsSentinel Dashboard</h1><p><a href='/docs'>API Documentation</a></p>")
 
 
 class IncidentAnalyzeRequest(BaseModel):
@@ -181,3 +195,4 @@ def trigger_ingest(request: IngestionRequest = IngestionRequest()) -> dict[str, 
     except Exception as e:
         logger.error("Ingestion failed: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail=f"Ingestion failed: {str(e)}")
+

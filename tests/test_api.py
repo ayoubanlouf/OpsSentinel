@@ -13,6 +13,14 @@ def test_health_check(test_client):
     assert "database" in data
 
 
+def test_dashboard_endpoint(test_client):
+    """Verify dashboard endpoint serves interactive web console."""
+    response = test_client.get("/dashboard")
+    assert response.status_code == 200
+    assert "OpsSentinel" in response.text
+    assert "Incident Triage Console" in response.text
+
+
 @patch("opssentinel.api.main.IncidentAgent.analyze_incident")
 def test_analyze_incident_endpoint(mock_analyze, test_client):
     """Verify /api/v1/incident/analyze executes agent and returns structured result."""

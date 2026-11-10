@@ -26,3 +26,4 @@ def test_agent_tool_execution(mock_exec, mock_gemini_client):
     agent = IncidentAgent(client=mock_gemini_client)
     res = agent._execute_tool("search_runbooks_tool", {"query": "test"})
     assert "ok" in res
+

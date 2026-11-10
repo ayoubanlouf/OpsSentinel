@@ -164,3 +164,4 @@ def record_incident_audit(
         row = cur.fetchone()
         conn.commit()
         return row[0] if row else 0
+

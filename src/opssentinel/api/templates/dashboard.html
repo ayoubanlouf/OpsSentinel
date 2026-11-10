@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OpsSentinel 🛡️ | Enterprise Incident Response & Runbook RAG</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f0fdf4',
+              500: '#22c55e',
+              600: '#16a34a',
+              700: '#15803d',
+            },
+            darkbg: '#0f172a',
+            darkcard: '#1e293b',
+            darkborder: '#334155'
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @keyframes pulse-slow {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+    .animate-pulse-slow {
+      animation: pulse-slow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+  </style>
+</head>
+<body class="bg-darkbg text-slate-100 min-h-screen flex flex-col font-sans antialiased">
+  
+  <!-- Header -->
+  <header class="border-b border-darkborder bg-darkcard/80 backdrop-blur sticky top-0 z-50 px-6 py-4 flex items-center justify-between">
+    <div class="flex items-center space-x-3">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-emerald-400 flex items-center justify-center shadow-lg shadow-brand-500/20">
+        <i class="fa-solid fa-shield-halved text-white text-xl"></i>
+      </div>
+      <div>
+        <h1 class="text-xl font-bold tracking-tight bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">
+          OpsSentinel <span class="text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium">Enterprise Agentic RAG</span>
+        </h1>
+        <p class="text-xs text-slate-400">Autonomous Incident Response & SRE Runbook Orchestration</p>
+      </div>
+    </div>
+    
+    <!-- Health status pills -->
+    <div class="flex items-center space-x-3 text-xs" id="health-bar">
+      <div class="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-slate-800 border border-darkborder">
+        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+        <span class="text-slate-300">API: <strong class="text-emerald-400">Online</strong></span>
+      </div>
+      <div class="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-slate-800 border border-darkborder">
+        <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+        <span class="text-slate-300">pgvector: <strong class="text-emerald-400" id="pg-status">Connected</strong></span>
+      </div>
+      <div class="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-slate-800 border border-darkborder">
+        <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+        <span class="text-slate-300">n8n Engine: <strong class="text-emerald-400">Active</strong></span>
+      </div>
+      <a href="/docs" target="_blank" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition flex items-center space-x-1 border border-darkborder">
+        <i class="fa-solid fa-book-open text-xs"></i>
+        <span>API Docs</span>
+      </a>
+      <a href="https://github.com/ayoubanlouf/OpsSentinel" target="_blank" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition flex items-center space-x-1 border border-darkborder">
+        <i class="fa-brands fa-github text-xs"></i>
+        <span>GitHub</span>
+      </a>
+    </div>
+  </header>
+
+  <!-- Main Content Grid -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+    
+    <!-- Left Column: Incident Input & Presets (5 cols) -->
+    <div class="lg:col-span-5 space-y-6">
+      
+      <!-- Incident Input Card -->
+      <div class="bg-darkcard border border-darkborder rounded-2xl p-5 shadow-xl">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center space-x-2">
+            <i class="fa-solid fa-triangle-exclamation text-amber-400"></i>
+            <h2 class="font-semibold text-slate-200">Incident Triage Console</h2>
+          </div>
+          <span class="text-xs text-slate-400">Model: <code class="text-emerald-400">gemini-3.8-flash</code></span>
+        </div>
+        
+        <form id="incident-form" class="space-y-4">
+          <div>
+            <label class="block text-xs font-medium text-slate-300 mb-1.5">Incident Description / SRE Alert Symptoms</label>
+            <textarea id="query-input" rows="4" required
+              placeholder="e.g. Production database connection pool exhaustion. Application APIs throwing 500 errors and psycopg FATAL: remaining connection slots are reserved."
+              class="w-full bg-slate-900 border border-darkborder rounded-xl p-3 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition resize-none"></textarea>
+          </div>
+
+          <div class="flex items-center justify-between text-xs text-slate-400">
+            <label class="flex items-center space-x-2 cursor-pointer">
+              <input type="checkbox" id="stream-toggle" checked class="rounded border-slate-700 bg-slate-900 text-emerald-500 focus:ring-emerald-500">
+              <span>Stream Live Agent Reasoning (SSE)</span>
+            </label>
+            <button type="button" id="reingest-btn" class="text-emerald-400 hover:text-emerald-300 transition flex items-center space-x-1">
+              <i class="fa-solid fa-rotate text-xs"></i>
+              <span>Re-index Runbooks</span>
+            </button>
+          </div>
+
+          <button type="submit" id="submit-btn"
+            class="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-semibold text-sm shadow-lg shadow-emerald-500/25 transition duration-150 flex items-center justify-center space-x-2">
+            <i class="fa-solid fa-bolt"></i>
+            <span>Execute Agentic Triage</span>
+          </button>
+        </form>
+
+        <!-- Presets -->
+        <div class="mt-5 pt-4 border-t border-darkborder">
+          <span class="text-xs uppercase tracking-wider text-slate-400 font-semibold mb-2 block">Quick Incident Scenarios</span>
+          <div class="grid grid-cols-2 gap-2 text-xs">
+            <button class="preset-btn p-2 rounded-lg bg-slate-800/80 hover:bg-slate-800 border border-darkborder text-left hover:border-emerald-500/50 transition"
+              data-query="FATAL: remaining connection slots are reserved for non-replication superuser connections. Core PostgreSQL connection pool exhausted.">
+              <div class="font-medium text-slate-200">🗄️ DB Pool Exhaustion</div>
+              <div class="text-[11px] text-slate-400 truncate">PostgreSQL connections saturated</div>
+            </button>
+            <button class="preset-btn p-2 rounded-lg bg-slate-800/80 hover:bg-slate-800 border border-darkborder text-left hover:border-emerald-500/50 transition"
+              data-query="CrashLoopBackOff on worker pods. Pods terminated with exit code 137 OOMKilled. Node memory pressure detected.">
+              <div class="font-medium text-slate-200">💥 OOM Pod Crash</div>
+              <div class="text-[11px] text-slate-400 truncate">Exit code 137 / Memory saturation</div>
+            </button>
+            <button class="preset-btn p-2 rounded-lg bg-slate-800/80 hover:bg-slate-800 border border-darkborder text-left hover:border-emerald-500/50 transition"
+              data-query="SSL: CERTIFICATE_VERIFY_FAILED for api.opssentinel.io. Cert-manager ACME renewal challenge timed out.">
+              <div class="font-medium text-slate-200">🔒 SSL Cert Expiration</div>
+              <div class="text-[11px] text-slate-400 truncate">TLS handshake failing</div>
+            </button>
+            <button class="preset-btn p-2 rounded-lg bg-slate-800/80 hover:bg-slate-800 border border-darkborder text-left hover:border-emerald-500/50 transition"
+              data-query="HTTP 504 Gateway Time-out on POST /api/v1/transactions. Upstream response time p99 exceeded 45s.">
+              <div class="font-medium text-slate-200">⏱️ API 504 Timeout</div>
+              <div class="text-[11px] text-slate-400 truncate">Ingress proxy timeout spike</div>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Historical Incidents -->
+      <div class="bg-darkcard border border-darkborder rounded-2xl p-5 shadow-xl">
+        <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center space-x-2">
+            <i class="fa-solid fa-clock-rotate-left text-slate-400"></i>
+            <h3 class="font-semibold text-sm text-slate-200">Incident Audit Log</h3>
+          </div>
+          <button id="refresh-history-btn" class="text-xs text-slate-400 hover:text-slate-200"><i class="fa-solid fa-arrows-rotate"></i></button>
+        </div>
+        <div id="history-container" class="space-y-2 max-h-60 overflow-y-auto pr-1 text-xs">
+          <div class="text-slate-500 text-center py-4">Loading audit logs...</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Right Column: Agent Execution Output & Remediation (7 cols) -->
+    <div class="lg:col-span-7 space-y-6">
+      
+      <!-- Live Agent Execution Canvas -->
+      <div class="bg-darkcard border border-darkborder rounded-2xl p-5 shadow-xl flex flex-col min-h-[500px]">
+        <div class="flex items-center justify-between pb-3 border-b border-darkborder mb-4">
+          <div class="flex items-center space-x-2">
+            <i class="fa-solid fa-microchip text-emerald-400"></i>
+            <h2 class="font-semibold text-slate-200">Agent Reasoning & Execution Canvas</h2>
+          </div>
+          <div id="status-badge" class="px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-800 text-slate-400 border border-darkborder">
+            Idle
+          </div>
+        </div>
+
+        <!-- Telemetry Meters (Dynamic) -->
+        <div id="telemetry-box" class="hidden mb-4 p-3 rounded-xl bg-slate-900 border border-darkborder grid grid-cols-3 gap-3 text-xs">
+          <!-- Injected via JS -->
+        </div>
+
+        <!-- Steps Timeline Container -->
+        <div id="steps-container" class="flex-1 space-y-3 overflow-y-auto pr-1">
+          <div class="h-full flex flex-col items-center justify-center text-slate-500 py-16 space-y-3">
+            <i class="fa-solid fa-radar text-4xl text-slate-700 animate-pulse"></i>
+            <p class="text-sm">Submit an incident query to watch the autonomous Gemini Agent analyze diagnostics, query pgvector runbooks, and dispatch to n8n.</p>
+          </div>
+        </div>
+
+        <!-- Remediation Plan Box -->
+        <div id="remediation-box" class="hidden mt-4 pt-4 border-t border-darkborder">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs uppercase tracking-wider font-bold text-emerald-400 flex items-center space-x-1.5">
+              <i class="fa-solid fa-clipboard-check"></i>
+              <span>Actionable Remediation Plan</span>
+            </span>
+            <span id="n8n-badge" class="px-2 py-0.5 rounded text-[11px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              <i class="fa-solid fa-check mr-1"></i> Dispatched to n8n
+            </span>
+          </div>
+          <div id="remediation-content" class="p-3.5 rounded-xl bg-slate-900/90 border border-emerald-500/20 text-xs font-mono text-slate-200 whitespace-pre-wrap leading-relaxed"></div>
+        </div>
+
+      </div>
+
+    </div>
+
+  </main>
+
+  <footer class="border-t border-darkborder bg-darkcard/40 py-3 px-6 text-center text-xs text-slate-500">
+    OpsSentinel Enterprise Platform &copy; 2026 &bull; Powered by Google Gemini, PostgreSQL pgvector, and n8n
+  </footer>
+
+  <script>
+    // Load health on startup
+    async function loadHealth() {
+      try {
+        const res = await fetch('/api/v1/health');
+        const data = await res.json();
+        document.getElementById('pg-status').textContent = data.database?.pgvector_enabled ? 'Active (pgvector)' : 'Error';
+      } catch (e) {
+        console.error('Health check failed', e);
+      }
+    }
+
+    // Load Incident History
+    async function loadHistory() {
+      const container = document.getElementById('history-container');
+      try {
+        const res = await fetch('/api/v1/incidents?limit=10');
+        const items = await res.json();
+        if (!items || items.length === 0) {
+          container.innerHTML = '<div class="text-slate-500 text-center py-4">No incidents logged yet.</div>';
+          return;
+        }
+        container.innerHTML = items.map(item => `
+          <div class="p-2.5 rounded-lg bg-slate-900 border border-darkborder flex items-start justify-between">
+            <div class="space-y-1 max-w-[80%]">
+              <div class="flex items-center space-x-2">
+                <span class="px-1.5 py-0.2 rounded font-bold text-[10px] ${item.severity === 'P1' ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'bg-orange-500/20 text-orange-400 border border-orange-500/30'}">${item.severity}</span>
+                <span class="font-medium text-slate-200 truncate">${item.title}</span>
+              </div>
+              <p class="text-[11px] text-slate-400 truncate">${item.query}</p>
+            </div>
+            <div class="text-[10px] text-slate-500 text-right">
+              <div>${item.n8n_dispatched ? '<span class="text-emerald-400">n8n Sent</span>' : '<span class="text-slate-500">Local</span>'}</div>
+              <div>${new Date(item.created_at).toLocaleTimeString()}</div>
+            </div>
+          </div>
+        `).join('');
+      } catch (e) {
+        container.innerHTML = '<div class="text-red-400 text-center py-2">Failed to load history</div>';
+      }
+    }
+
+    // Presets handler
+    document.querySelectorAll('.preset-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.getElementById('query-input').value = btn.getAttribute('data-query');
+      });
+    });
+
+    // Reingest button
+    document.getElementById('reingest-btn').addEventListener('click', async () => {
+      const btn = document.getElementById('reingest-btn');
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-xs"></i><span>Re-indexing...</span>';
+      try {
+        const res = await fetch('/api/v1/ingest', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({reset: true}) });
+        const data = await res.json();
+        alert(data.message || 'Runbooks re-indexed successfully!');
+      } catch (e) {
+        alert('Failed to re-index runbooks: ' + e);
+      } finally {
+        btn.innerHTML = '<i class="fa-solid fa-rotate text-xs"></i><span>Re-index Runbooks</span>';
+      }
+    });
+
+    document.getElementById('refresh-history-btn').addEventListener('click', loadHistory);
+
+    // Form submit / analyze incident
+    document.getElementById('incident-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const query = document.getElementById('query-input').value.trim();
+      const isStream = document.getElementById('stream-toggle').checked;
+      if (!query) return;
+
+      const submitBtn = document.getElementById('submit-btn');
+      const statusBadge = document.getElementById('status-badge');
+      const stepsContainer = document.getElementById('steps-container');
+      const remediationBox = document.getElementById('remediation-box');
+      const telemetryBox = document.getElementById('telemetry-box');
+
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i><span>Analyzing Incident...</span>';
+      statusBadge.className = 'px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20 animate-pulse';
+      statusBadge.textContent = 'Agent Reasoning';
+
+      stepsContainer.innerHTML = '';
+      remediationBox.classList.add('hidden');
+      telemetryBox.classList.add('hidden');
+
+      if (!isStream) {
+        // Standard JSON Request
+        try {
+          const res = await fetch('/api/v1/incident/analyze', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query, stream: false })
+          });
+          const result = await res.json();
+          renderCompleteResult(result);
+        } catch (err) {
+          stepsContainer.innerHTML = `<div class="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">Triage failed: ${err.message}</div>`;
+        } finally {
+          finishRun();
+        }
+      } else {
+        // SSE Streaming Request
+        try {
+          const res = await fetch('/api/v1/incident/analyze', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query, stream: true })
+          });
+
+          const reader = res.body.getReader();
+          const decoder = new TextDecoder('utf-8');
+          let buffer = '';
+
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+
+            const lines = buffer.split('\n\n');
+            buffer = lines.pop(); // keep trailing incomplete chunk
+
+            for (const line of lines) {
+              if (!line.trim()) continue;
+              const eventMatch = line.match(/^event:\s*(\w+)/);
+              const dataMatch = line.match(/data:\s*(.+)$/m);
+              if (eventMatch && dataMatch) {
+                const event = eventMatch[1];
+                const data = JSON.parse(dataMatch[1]);
+                handleStreamEvent(event, data);
+              }
+            }
+          }
+        } catch (err) {
+          stepsContainer.innerHTML += `<div class="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">Stream error: ${err.message}</div>`;
+        } finally {
+          finishRun();
+        }
+      }
+    });
+
+    function handleStreamEvent(event, data) {
+      const container = document.getElementById('steps-container');
+      if (event === 'start') {
+        container.innerHTML = `<div class="p-3 rounded-xl bg-slate-900 border border-darkborder text-xs text-slate-300 flex items-center space-x-2">
+          <i class="fa-solid fa-circle-notch fa-spin text-emerald-400"></i>
+          <span>${data.message}...</span>
+        </div>`;
+      } else if (event === 'step') {
+        appendStepCard(data);
+      } else if (event === 'complete') {
+        renderCompleteResult(data);
+      }
+    }
+
+    function appendStepCard(step) {
+      const container = document.getElementById('steps-container');
+      const card = document.createElement('div');
+      card.className = 'p-3.5 rounded-xl bg-slate-900 border border-darkborder space-y-2 text-xs transition duration-200';
+      
+      const iconMap = {
+        'query_system_diagnostics_tool': 'fa-solid fa-gauge text-blue-400',
+        'search_runbooks_tool': 'fa-solid fa-book-bookmark text-amber-400',
+        'dispatch_n8n_alert_tool': 'fa-solid fa-paper-plane text-emerald-400'
+      };
+      const icon = iconMap[step.tool_name] || 'fa-solid fa-terminal text-slate-400';
+
+      card.innerHTML = `
+        <div class="flex items-center justify-between">
+          <div class="flex items-center space-x-2 font-semibold text-slate-200">
+            <i class="${icon}"></i>
+            <span>Step ${step.step_number}: <code class="text-slate-300">${step.tool_name || 'Reasoning'}</code></span>
+          </div>
+          <span class="text-[10px] text-slate-500">${step.timestamp || ''}</span>
+        </div>
+        ${step.thought ? `<div class="text-slate-400 italic bg-slate-800/50 p-2 rounded-lg">${step.thought}</div>` : ''}
+        <div class="bg-slate-950 p-2 rounded-lg font-mono text-[11px] text-slate-300 overflow-x-auto max-h-36">
+          ${JSON.stringify(step.tool_result || step.tool_args, null, 2)}
+        </div>
+      `;
+      container.appendChild(card);
+      card.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function renderCompleteResult(result) {
+      const statusBadge = document.getElementById('status-badge');
+      statusBadge.className = 'px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
+      statusBadge.textContent = 'Triage Resolved';
+
+      // Render Remediation
+      const remediationBox = document.getElementById('remediation-box');
+      const remediationContent = document.getElementById('remediation-content');
+      remediationContent.textContent = result.remediation_plan || result.final_analysis || 'No plan provided.';
+      remediationBox.classList.remove('hidden');
+
+      // Refresh history
+      loadHistory();
+    }
+
+    function finishRun() {
+      const submitBtn = document.getElementById('submit-btn');
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = '<i class="fa-solid fa-bolt"></i><span>Execute Agentic Triage</span>';
+    }
+
+    // Init
+    loadHealth();
+    loadHistory();
+  </script>
+</body>
+</html>

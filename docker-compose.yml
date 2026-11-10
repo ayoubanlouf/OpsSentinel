@@ -57,6 +57,42 @@ services:
     networks:
       - opssentinel-network
 
+  # ============================================================================
+  # OpsSentinel FastAPI Agent Service
+  # ============================================================================
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: opssentinel-api
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-8000}:8000"
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-3.8-flash}
+      - GEMINI_EMBEDDING_MODEL=${GEMINI_EMBEDDING_MODEL:-gemini-embedding-001}
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - POSTGRES_DB=${POSTGRES_DB:-opssentinel}
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-opssentinel}
+      - N8N_HOST=n8n
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - N8N_WEBHOOK_URL=http://n8n:5678/webhook/incident-alert
+      - APP_HOST=0.0.0.0
+      - APP_PORT=8000
+      - ENVIRONMENT=${ENVIRONMENT:-development}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      n8n:
+        condition: service_healthy
+    networks:
+      - opssentinel-network
+
 volumes:
   postgres_data:
     name: opssentinel_postgres_data
@@ -67,4 +103,3 @@ networks:
   opssentinel-network:
     name: opssentinel_network
     driver: bridge
-

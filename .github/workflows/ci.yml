@@ -62,3 +62,4 @@ jobs:
           ENVIRONMENT: testing
         run: |
           pytest -v --durations=10
+
